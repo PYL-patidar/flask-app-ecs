@@ -1,0 +1,48 @@
+# Takeing a base image with size only 180 MB whereis python3.14 size approx 1.2GB which is too big 
+# Stage 1 (builder)
+
+FROM python:3.14-slim AS builder
+
+# Create a workdir to store code of host to container
+WORKDIR /app
+
+# here now i need of code but take a pause and thing, right now i have not need of entire code. I just need only 
+# requirements for installatin so for now i copy only requirements
+
+COPY requirements.txt .
+
+# run requirements.txt and install the all dependencies and packed them into a location of workdir like /app/libraries
+
+RUN pip install -r requirements.txt --target /app/libraries
+
+# Now i can copy the rest of code 
+
+COPY . .
+
+##----- Here my stage one is complete-------##
+
+# Now i have not run the code 
+# because the image which i am running still big in size and not secure because anyone can check the container and can 
+# crash it so I will use another image that is called "Distroless image" this image are very secure because it is destroless means in this image no any distribution present for run, it only contains the app code which is not engouh for check the app. for exec the app one OS required 
+# So now i use destroless image
+ 
+# Stage 2 (deployer)
+
+# this is a destroless image wich size is too small
+FROM gcr.io/distroless/python3-debian13 AS deployer
+
+# again create workdir for store code
+WORKDIR /app
+
+# copy code from last /app to current /app
+COPY --from=builder /app/libraries /app/libraries
+
+COPY --from=builder /app .
+
+# give path to CMD to run the code 
+ENV PYTHONPATH="/app/libraries"
+
+EXPOSE 80
+
+#finally run the code
+CMD [ "run.py" ]
